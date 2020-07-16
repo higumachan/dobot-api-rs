@@ -10,7 +10,7 @@ use std::io::{Write, Read};
 use std::sync::Arc;
 
 pub struct Connector {
-    io_device: Arc<RwLock<TTYPort>>,
+    io_device: TTYPort,
     red_bytes: Vec<u8>,
 }
 
@@ -35,7 +35,7 @@ impl Connector {
             flow_control: FlowControl::None,
         };
         Ok(Self {
-            io_device: Arc::new(RwLock::new((TTYPort::open(&Path::new(port_name), &settings).map_err(|e| ConnectorError::SerialPortError(e))?))),
+            io_device: TTYPort::open(&Path::new(port_name), &settings).map_err(|e| ConnectorError::SerialPortError(e))?,
             red_bytes: vec![],
         })
     }
@@ -43,7 +43,7 @@ impl Connector {
     pub async fn read_packet(&mut self) -> Packet {
         loop {
             let mut buf = [0u8; MAX_PACKET_SIZE];
-            let size = self.io_device.write().await.read(&mut buf);
+            let size = self.io_device.read(&mut buf);
             if size.is_err() {
                 delay_for(Duration::from_millis(10)).await;
                 continue;
@@ -66,6 +66,6 @@ impl Connector {
     pub async fn write_packet(&mut self, packet: &Packet) -> std::io::Result<usize> {
         let mut buf = [0u8; MAX_PACKET_SIZE];
         packet.to_bytes(&mut buf)?;
-        self.io_device.write().await.write(&buf)
+        self.io_device.write(&buf)
     }
 }

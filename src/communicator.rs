@@ -3,7 +3,6 @@ use crate::protocol::message::Message;
 use futures::channel::oneshot;
 use crate::connector::Connector;
 use nom::lib::std::collections::VecDeque;
-use tokio::time::delay_for;
 use std::time::Duration;
 use crate::protocol::packet::Packet;
 use crate::protocol::protocol_id::ProtocolID;
@@ -27,7 +26,7 @@ struct MessageHandler {
 }
 
 pub struct Communicator {
-    connector: Arc<RwLock<Connector>>,
+    connector: Connector,
     message_handlers: VecDeque<MessageHandler>,
     left_space: usize,
     wait_time: Duration,
@@ -41,7 +40,7 @@ enum Control {
 
 
 impl Communicator {
-    pub fn new(connector: Arc<RwLock<Connector>>, wait_time: Option<Duration>) -> Self {
+    pub fn new(connector: Connector, wait_time: Option<Duration>) -> Self {
         let wait_time = wait_time.unwrap_or(Duration::from_millis(500));
         Communicator {
             connector,
@@ -68,41 +67,43 @@ impl Communicator {
     }
 
     pub async fn run(&mut self) {
-        loop {
-            let mh = self.pop_message_handler().await;
-            if mh.message.is_queued != 0 {
-                let message = Message::new_get_left_space();
-                let mut ctl = self.send_and_wait_command_ack(&message).await;
-                let mut num_retry = 0i32;
-                while check_retry(&ctl) && num_retry < 3 {
-                    ctl = self.send_and_wait_command_ack(&message).await;
-                    num_retry += 1;
-                }
-                if ctl.is_err() {
-                    mh.sender.send(CommunicateStatus::Timeout);
-                    continue; // このメッセージは終了
-                }
-            }
-            self.connector.write().await.write_packet(&Packet::from_message(&mh.message)).await.unwrap();
-
-            let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
-            let mut num_retry = 0;
+        let mh = self.message_handlers.pop_front();
+        if mh.is_none() {
+            return;
+        }
+        let mh = mh.unwrap();
+        if mh.message.is_queued != 0 {
+            let message = Message::new_get_left_space();
+            let mut ctl = self.send_and_wait_command_ack(&message).await;
+            let mut num_retry = 0i32;
             while check_retry(&ctl) && num_retry < 3 {
-                ctl = self.send_and_wait_command_ack(&mh.message).await;
+                ctl = self.send_and_wait_command_ack(&message).await;
                 num_retry += 1;
             }
             if ctl.is_err() {
                 mh.sender.send(CommunicateStatus::Timeout);
-                continue; // このメッセージは終了
+                return; // このメッセージは終了
             }
-            mh.sender.send(CommunicateStatus::NoError(ctl.unwrap()));
         }
+        self.connector.write_packet(&Packet::from_message(&mh.message)).await.unwrap();
+
+        let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
+        let mut num_retry = 0;
+        while check_retry(&ctl) && num_retry < 3 {
+            ctl = self.send_and_wait_command_ack(&mh.message).await;
+            num_retry += 1;
+        }
+        if ctl.is_err() {
+            mh.sender.send(CommunicateStatus::Timeout);
+            return; // このメッセージは終了
+        }
+        mh.sender.send(CommunicateStatus::NoError(ctl.unwrap()));
     }
 
-    async fn send_and_wait_command_ack(&self, message: &Message) -> Result<Message, Control> {
-        self.connector.write().await.write_packet(&Packet::from_message(message)).await;
+    async fn send_and_wait_command_ack(&mut self, message: &Message) -> Result<Message, Control> {
+        self.connector.write_packet(&Packet::from_message(message)).await;
 
-        match self.connector.write().await.read_packet_with_timeout(Duration::from_millis(500)).await {
+        match self.connector.read_packet_with_timeout(Duration::from_millis(500)).await {
             Some(packet) => {
                 let mes = packet.to_message();
                 if mes.id != message.id {
@@ -111,17 +112,6 @@ impl Communicator {
                 Ok(mes)
             }
             None => Err(Control::Retry)
-        }
-    }
-
-    async fn pop_message_handler(&mut self) -> MessageHandler {
-        loop {
-            match self.message_handlers.pop_front() {
-                Some(mh) => {
-                    return mh;
-                }
-                None => delay_for(self.wait_time).await
-            }
         }
     }
 }

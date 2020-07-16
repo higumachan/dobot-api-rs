@@ -7,6 +7,11 @@ use crate::protocol::protocol_id::ProtocolID;
 use crate::api::DobotError::CommunicationError;
 use serialport::SerialPortType::UsbPort;
 use crate::connector::{ConnectorError, Connector};
+use std::time::Duration;
+use tokio::time::delay_for;
+use futures::Future;
+use futures::{select, pin_mut};
+use futures::future::{Fuse, FusedFuture, FutureExt, BoxFuture};
 
 pub mod types;
 
@@ -24,8 +29,31 @@ pub struct Dobot {
 }
 
 impl Dobot {
-    pub async fn start(&self) {
-        self.communicator.write().await.run().await;
+    pub async fn start(&self, dobot_main: BoxFuture<'_, ()>) where
+    {
+        let dm = dobot_main.fuse();
+        let start = self.start_communicator_loop().fuse();
+
+        pin_mut!(start, dm);
+
+        loop {
+            select! {
+                () = start => {
+                    println!("start");
+                },
+                () = dm => {
+                    println!("main");
+                    break;
+                },
+            }
+        };
+    }
+
+    async fn start_communicator_loop(&self) {
+        loop {
+            self.communicator.write().await.run().await;
+            delay_for(Duration::from_millis(10)).await
+        }
     }
     pub fn search_dobot() -> Vec<String> {
         let ports = serialport::available_ports().unwrap();
@@ -51,12 +79,12 @@ impl Dobot {
 
 
         Ok(Self {
-            communicator: Arc::new(RwLock::new(Communicator::new(Arc::new(RwLock::new(Connector::connect(
+            communicator: Arc::new(RwLock::new(Communicator::new(Connector::connect(
                 port_name.as_str(),
                 boudrate,
                 fw_type,
                 version
-            ).map_err(|e| DobotError::ConnectorError(e))?)), None)))
+            ).map_err(|e| DobotError::ConnectorError(e))?, None)))
         })
     }
 
