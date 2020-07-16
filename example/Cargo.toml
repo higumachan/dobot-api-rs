@@ -1,0 +1,13 @@
+[package]
+name = "example"
+version = "0.1.0"
+authors = ["higumachan <harekumo792154@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dobot-api = { path = ".." }
+tokio = { version = "^0.2", features = ["full"] }
+lazy_static = "1.4.0"
+futures = "^0.3"

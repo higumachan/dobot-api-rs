@@ -29,7 +29,7 @@ pub struct Dobot {
 }
 
 impl Dobot {
-    pub async fn start(&self, dobot_main: BoxFuture<'_, ()>) where
+    pub async fn start(&self, dobot_main_future: BoxFuture<'_, ()>) where
     {
         let dm = dobot_main.fuse();
         let start = self.start_communicator_loop().fuse();
@@ -39,14 +39,12 @@ impl Dobot {
         loop {
             select! {
                 () = start => {
-                    println!("start");
                 },
                 () = dm => {
-                    println!("main");
                     break;
                 },
             }
-        };
+        }
     }
 
     async fn start_communicator_loop(&self) {
@@ -132,4 +130,6 @@ impl Dobot {
             _ => Err(DobotError::CommunicationError(status)),
         }
     }
+
+    async fn
 }
