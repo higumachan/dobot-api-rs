@@ -1,4 +1,4 @@
-use crate::api::types::PTPCmd;
+use crate::api::types::{PTPCmd, EndEffectorParams};
 use std::sync::{Arc};
 use tokio::sync::RwLock;
 use crate::communicator::{Communicator, CommunicateStatus};
@@ -28,10 +28,12 @@ pub struct Dobot {
     communicator: Arc<RwLock<Communicator>>,
 }
 
+type ResultQueueIndex = Result<Option<u64>>;
+
 impl Dobot {
     pub async fn start(&self, dobot_main_future: BoxFuture<'_, ()>) where
     {
-        let dm = dobot_main.fuse();
+        let dm = dobot_main_future.fuse();
         let start = self.start_communicator_loop().fuse();
 
         pin_mut!(start, dm);
@@ -90,27 +92,25 @@ impl Dobot {
 
     }
 
-    pub async fn set_ptp_cmd(&self, ptp_cmd: PTPCmd, is_queued: bool) -> Result<Option<u64>>  {
+    pub async fn set_end_effector_params(&self, end_effector_params: EndEffectorParams, is_queued: bool) -> ResultQueueIndex {
+        let mes = Message::new(
+            ProtocolID::ProtocolEndEffectorParams,
+            1,
+            is_queued,
+            &Some(end_effector_params),
+        );
+
+        self.send_command_message(&mes).await
+    }
+
+    pub async fn set_ptp_cmd(&self, ptp_cmd: PTPCmd, is_queued: bool) -> ResultQueueIndex {
         let mes = Message::new(
             ProtocolID::ProtocolPTPCmd,
             1,
             is_queued,
             &Some(ptp_cmd),
         );
-
-        let status_recv = {
-            self.communicator.write().await.insert_message(&mes)
-        };
-        let status = status_recv.await.unwrap();
-        if let CommunicateStatus::NoError(ack_mes) = status {
-            if is_queued {
-                Ok(Some(ack_mes.params[0] as u64))
-            } else {
-                Ok(None)
-            }
-        } else {
-            Err(CommunicationError(status))
-        }
+        self.send_command_message(&mes).await
     }
 
     pub async fn set_queued_cmd_start_exec(&self) -> Result<()> {
@@ -131,5 +131,19 @@ impl Dobot {
         }
     }
 
-    async fn
+    async fn send_command_message(&self, message: &Message) -> Result<Option<u64>> {
+        let status_recv = {
+            self.communicator.write().await.insert_message(message)
+        };
+        let status = status_recv.await.unwrap();
+        if let CommunicateStatus::NoError(ack_mes) = status {
+            if message.is_queued != 0 {
+                Ok(Some(ack_mes.params[0] as u64))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Err(CommunicationError(status))
+        }
+    }
 }

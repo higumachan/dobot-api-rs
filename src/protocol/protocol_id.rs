@@ -10,6 +10,8 @@ pub enum ProtocolID {
     ProtocolPTPCommonParams = PROTOCOL_PTP_JOINT_PARAMS + 3,
     ProtocolPTPCmd = PROTOCOL_PTP_JOINT_PARAMS + 4,
 
+    ProtocolEndEffectorParams = 60,
+
     ProtocolPTPLParams = PROTOCOL_PTP_JOINT_PARAMS + 5,
     ProtocolPTPWithLCmd = PROTOCOL_PTP_JOINT_PARAMS + 6,
     ProtocolPTPJump2Params = PROTOCOL_PTP_JOINT_PARAMS + 7,

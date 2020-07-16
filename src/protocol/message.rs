@@ -1,3 +1,4 @@
+
 use crate::protocol::packet::SYNC_BYTE;
 use crate::protocol::protocol_id::ProtocolID;
 use std::io::Read;
@@ -9,6 +10,7 @@ pub const PARAMS_SIZE: usize = MAX_PAYLOAD_SIZE as usize - 2;
 pub trait ToParams {
     fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]);
 }
+
 
 #[repr(C, packed)]
 #[derive(Clone)]
