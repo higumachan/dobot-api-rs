@@ -57,13 +57,14 @@ impl Packet {
 
     pub fn to_message(&self) -> Message {
         let mut params = [0u8; PARAMS_SIZE];
-        let len = params.len();
-        params.copy_from_slice(&self.payload.params[..len]);
+        let params_len = (self.header.payload_len - 2) as usize;
+        let mut params_buf = &mut params[..PARAMS_SIZE];
+        params_buf.write(&self.payload.params);
         Message {
             id: self.payload.id,
             rw: self.payload.ctrl & 0x01,
             is_queued: (self.payload.ctrl >> 1) & 0x01,
-            params_len: self.header.payload_len + 2,
+            params_len: params_len as u8,
             params,
         }
     }
@@ -76,7 +77,6 @@ impl Packet {
         for i in 0..((header.payload_len - 2) as usize) {
             sum = sum.wrapping_add(payload.params[i]);
         }
-        println!("{}", sum);
         0u8.wrapping_sub(sum) as u8
     }
 

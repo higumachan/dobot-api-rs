@@ -82,20 +82,20 @@ impl Communicator {
                     mh.sender.send(CommunicateStatus::Timeout);
                     continue; // このメッセージは終了
                 }
-                self.connector.write().await.write_packet(&Packet::from_message(&mh.message)).await.unwrap();
-
-                let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
-                let mut num_retry = 0;
-                while check_retry(&ctl) && num_retry < 3 {
-                    ctl = self.send_and_wait_command_ack(&mh.message).await;
-                    num_retry += 1;
-                }
-                if ctl.is_err() {
-                    mh.sender.send(CommunicateStatus::Timeout);
-                    continue; // このメッセージは終了
-                }
-                mh.sender.send(CommunicateStatus::NoError(ctl.unwrap()));
             }
+            self.connector.write().await.write_packet(&Packet::from_message(&mh.message)).await.unwrap();
+
+            let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
+            let mut num_retry = 0;
+            while check_retry(&ctl) && num_retry < 3 {
+                ctl = self.send_and_wait_command_ack(&mh.message).await;
+                num_retry += 1;
+            }
+            if ctl.is_err() {
+                mh.sender.send(CommunicateStatus::Timeout);
+                continue; // このメッセージは終了
+            }
+            mh.sender.send(CommunicateStatus::NoError(ctl.unwrap()));
         }
     }
 

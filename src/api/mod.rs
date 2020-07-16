@@ -72,7 +72,10 @@ impl Dobot {
             &Some(ptp_cmd),
         );
 
-        let status = self.communicator.write().await.insert_message(&mes).await.unwrap();
+        let status_recv = {
+            self.communicator.write().await.insert_message(&mes)
+        };
+        let status = status_recv.await.unwrap();
         if let CommunicateStatus::NoError(ack_mes) = status {
             if is_queued {
                 Ok(Some(ack_mes.params[0] as u64))
@@ -92,7 +95,10 @@ impl Dobot {
             &None,
         );
 
-        let status = self.communicator.write().await.insert_message(&mes).await.unwrap();
+        let status_recv = {
+            self.communicator.write().await.insert_message(&mes)
+        };
+        let status = status_recv.await.unwrap();
         match status {
             CommunicateStatus::NoError(_) => Ok(()),
             _ => Err(DobotError::CommunicationError(status)),
