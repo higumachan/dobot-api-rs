@@ -79,11 +79,6 @@ impl Communicator {
                 return; // このメッセージは終了
             }
         }
-        self.connector
-            .write_packet(&Packet::from_message(&mh.message))
-            .await
-            .unwrap();
-
         let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
         let mut num_retry = 0;
         while check_retry(&ctl) && num_retry < 3 {
@@ -94,13 +89,16 @@ impl Communicator {
             mh.sender.send(CommunicateStatus::Timeout).unwrap();
             return; // このメッセージは終了
         }
-        mh.sender.send(CommunicateStatus::NoError(ctl.unwrap())).unwrap();
+        mh.sender
+            .send(CommunicateStatus::NoError(ctl.unwrap()))
+            .unwrap();
     }
 
     async fn send_and_wait_command_ack(&mut self, message: &Message) -> Result<Message, Control> {
         self.connector
             .write_packet(&Packet::from_message(message))
-            .await.unwrap();
+            .await
+            .unwrap();
 
         match self
             .connector
@@ -114,7 +112,7 @@ impl Communicator {
                 }
                 Ok(mes)
             }
-            None => Err(Control::Retry),
+            None => panic!("timeout"),
         }
     }
 }
