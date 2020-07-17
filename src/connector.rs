@@ -1,5 +1,4 @@
 use crate::protocol::packet::{Packet, MAX_PACKET_SIZE};
-use futures::prelude::*;
 use serialport::posix::TTYPort;
 use serialport::{DataBits, Error, FlowControl, Parity, SerialPortSettings, StopBits};
 use std::time::Duration;
@@ -54,7 +53,7 @@ impl Connector {
             }
             let size = size.unwrap();
             self.red_bytes.extend(buf[0..size].iter());
-            let packet = Packet::from_bytes_impl(&self.red_bytes);
+            let packet = Packet::from_bytes(&self.red_bytes);
             if let Ok((remain, packet)) = packet {
                 self.red_bytes = Vec::from(remain);
                 return packet;

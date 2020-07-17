@@ -4,6 +4,8 @@ use crate::communicator::{CommunicateStatus, Communicator};
 use crate::connector::{Connector, ConnectorError};
 use crate::protocol::message::Message;
 use crate::protocol::protocol_id::ProtocolID;
+use futures::channel::oneshot;
+use futures::future::join_all;
 use serialport::SerialPortType::UsbPort;
 use std::sync::Arc;
 use std::time::Duration;
@@ -26,9 +28,13 @@ pub type Result<T> = std::result::Result<T, DobotError>;
 
 pub struct Dobot {
     communicator: Arc<RwLock<Communicator>>,
+    checking_queue_indices: Arc<RwLock<Vec<(QueueIndex, oneshot::Sender<QueueIndex>)>>>,
 }
 
-type ResultQueueIndex = Result<Option<u64>>;
+#[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
+pub struct QueueIndex(u64);
+
+type ResultQueueIndex = Result<Option<QueueIndex>>;
 
 impl Dobot {
     pub async fn start(&self, dobot_main_future: BoxFuture<'_, ()>) {
@@ -51,9 +57,45 @@ impl Dobot {
     async fn start_communicator_loop(&self) {
         loop {
             self.communicator.write().await.run().await;
-            delay_for(Duration::from_millis(10)).await
+            delay_for(Duration::from_millis(10)).await;
         }
     }
+
+    async fn check_queue_index_loop(&self) {
+        loop {
+            let queue_index = self
+                .get_queue_index()
+                .await
+                .expect("some error when get_queue_index");
+            let mut chi = self.checking_queue_indices.write().await;
+            let mut i = 0;
+
+            while i < chi.len() {
+                if queue_index >= chi[i].0 {
+                    let c = chi.remove(i);
+                    c.1.send(queue_index);
+                } else {
+                    i += 1;
+                }
+            }
+            delay_for(Duration::from_millis(10)).await;
+        }
+    }
+
+    pub async fn wait_queued_command(&self, index: QueueIndex) {
+        let (tx, rx) = oneshot::channel::<QueueIndex>();
+        self.checking_queue_indices.write().await.push((index, tx));
+        rx.await;
+    }
+
+    pub async fn wait_queued_commands(&self, indices: &Vec<QueueIndex>) {
+        join_all(indices.iter().map(|x| self.wait_queued_command(*x))).await;
+    }
+
+    pub async fn get_queue_index(&self) -> Result<QueueIndex> {
+        Ok(QueueIndex(1u64))
+    }
+
     pub fn search_dobot() -> Vec<String> {
         let ports = serialport::available_ports().unwrap();
 
@@ -96,6 +138,7 @@ impl Dobot {
                     .map_err(|e| DobotError::ConnectorError(e))?,
                 None,
             ))),
+            checking_queue_indices: Arc::new(RwLock::new(vec![])),
         })
     }
 
@@ -132,12 +175,12 @@ impl Dobot {
         }
     }
 
-    async fn send_command_message(&self, message: &Message) -> Result<Option<u64>> {
+    async fn send_command_message(&self, message: &Message) -> ResultQueueIndex {
         let status_recv = { self.communicator.write().await.insert_message(message) };
         let status = status_recv.await.unwrap();
         if let CommunicateStatus::NoError(ack_mes) = status {
             if message.is_queued != 0 {
-                Ok(Some(ack_mes.params[0] as u64))
+                Ok(Some(QueueIndex(ack_mes.params[0] as u64)))
             } else {
                 Ok(None)
             }

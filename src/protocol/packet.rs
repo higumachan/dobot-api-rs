@@ -54,7 +54,7 @@ impl Packet {
         let mut params = [0u8; PARAMS_SIZE];
         let params_len = (self.header.payload_len - 2) as usize;
         let mut params_buf = &mut params[..PARAMS_SIZE];
-        params_buf.write(&self.payload.params);
+        params_buf.write(&self.payload.params).unwrap();
         Message {
             id: self.payload.id,
             rw: self.payload.ctrl & 0x01,
@@ -88,19 +88,7 @@ impl Packet {
         Ok(size)
     }
 
-    pub fn from_bytes(buf: &[u8]) -> Option<Self> {
-        let (_, packet) = Self::from_bytes_impl(buf).ok()?;
-
-        let calc_checksum = Self::checksum(&packet.header, &packet.payload);
-
-        if packet.checksum != calc_checksum {
-            return None;
-        }
-
-        Some(packet)
-    }
-
-    pub fn from_bytes_impl(input: &[u8]) -> IResult<&[u8], Packet> {
+    pub fn from_bytes(input: &[u8]) -> IResult<&[u8], Packet> {
         let (remain, header) = map(
             tuple((take(1usize), take(1usize), take(1usize))),
             |(x1, x2, x3): (&[u8], _, _)| PacketHeader {

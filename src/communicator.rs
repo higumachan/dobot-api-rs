@@ -18,8 +18,6 @@ pub enum CommunicateStatus {
 }
 
 struct MessageHandler {
-    finished: bool,
-    result: Option<CommunicateStatus>,
     message: Message,
     sender: oneshot::Sender<CommunicateStatus>,
 }
@@ -56,8 +54,6 @@ impl Communicator {
             return rx;
         }
         self.message_handlers.push_back(MessageHandler {
-            finished: false,
-            result: None,
             message: message.clone(),
             sender: tx,
         });
@@ -104,11 +100,11 @@ impl Communicator {
     async fn send_and_wait_command_ack(&mut self, message: &Message) -> Result<Message, Control> {
         self.connector
             .write_packet(&Packet::from_message(message))
-            .await;
+            .await.unwrap();
 
         match self
             .connector
-            .read_packet_with_timeout(Duration::from_millis(500))
+            .read_packet_with_timeout(self.wait_time)
             .await
         {
             Some(packet) => {
