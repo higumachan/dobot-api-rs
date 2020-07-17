@@ -1,32 +1,35 @@
-use futures::prelude::*;
-use serialport::{SerialPort, open_with_settings, SerialPortSettings, DataBits, Parity, StopBits, FlowControl, Error};
 use crate::protocol::packet::{Packet, MAX_PACKET_SIZE};
-use tokio::time::{delay_for, timeout};
-use std::time::Duration;
+use futures::prelude::*;
 use serialport::posix::TTYPort;
-use tokio::sync::RwLock;
-use std::path::{Path};
-use std::io::{Write, Read};
-use std::sync::Arc;
+use serialport::{DataBits, Error, FlowControl, Parity, SerialPortSettings, StopBits};
+use std::time::Duration;
+use tokio::time::{delay_for, timeout};
+
+use std::io::{Read, Write};
+use std::path::Path;
 
 pub struct Connector {
     io_device: TTYPort,
     red_bytes: Vec<u8>,
 }
 
-
 #[derive(Debug)]
 pub enum ConnectorError {
-    SerialPortError(Error)
+    SerialPortError(Error),
 }
 
 type Result<T> = std::result::Result<T, ConnectorError>;
 
 impl Connector {
-    pub fn connect(port_name: &str, boudrate: u32, fw_type: Option<&str>, version: Option<&str>) -> Result<Self> {
+    pub fn connect(
+        port_name: &str,
+        boudrate: u32,
+        _fw_type: Option<&str>,
+        _version: Option<&str>,
+    ) -> Result<Self> {
         // TODO(higumachan): UDP Connect and checking fw and version
 
-        let settings = SerialPortSettings{
+        let settings = SerialPortSettings {
             baud_rate: boudrate,
             data_bits: DataBits::Eight,
             parity: Parity::None,
@@ -35,7 +38,8 @@ impl Connector {
             flow_control: FlowControl::None,
         };
         Ok(Self {
-            io_device: TTYPort::open(&Path::new(port_name), &settings).map_err(|e| ConnectorError::SerialPortError(e))?,
+            io_device: TTYPort::open(&Path::new(port_name), &settings)
+                .map_err(|e| ConnectorError::SerialPortError(e))?,
             red_bytes: vec![],
         })
     }

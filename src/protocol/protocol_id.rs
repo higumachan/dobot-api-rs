@@ -1,7 +1,6 @@
 const PROTOCOL_PTP_JOINT_PARAMS: u8 = 80;
 const PROTOCOL_FUNCTION_QUEUED_CMD_BASE: u8 = 240;
 
-
 #[repr(u8)]
 pub enum ProtocolID {
     ProtocolPTPJointParams = PROTOCOL_PTP_JOINT_PARAMS + 0,

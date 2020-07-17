@@ -1,12 +1,11 @@
-use tokio::sync::RwLock;
-use crate::protocol::message::Message;
-use futures::channel::oneshot;
-use crate::connector::Connector;
-use nom::lib::std::collections::VecDeque;
 use std::time::Duration;
+
+use futures::channel::oneshot;
+use nom::lib::std::collections::VecDeque;
+
+use crate::connector::Connector;
+use crate::protocol::message::Message;
 use crate::protocol::packet::Packet;
-use crate::protocol::protocol_id::ProtocolID;
-use std::sync::Arc;
 
 const MAX_MESSAGES: usize = 128;
 
@@ -37,7 +36,6 @@ enum Control {
     Retry,
     Abort,
 }
-
 
 impl Communicator {
     pub fn new(connector: Connector, wait_time: Option<Duration>) -> Self {
@@ -81,11 +79,14 @@ impl Communicator {
                 num_retry += 1;
             }
             if ctl.is_err() {
-                mh.sender.send(CommunicateStatus::Timeout);
+                mh.sender.send(CommunicateStatus::Timeout).unwrap();
                 return; // このメッセージは終了
             }
         }
-        self.connector.write_packet(&Packet::from_message(&mh.message)).await.unwrap();
+        self.connector
+            .write_packet(&Packet::from_message(&mh.message))
+            .await
+            .unwrap();
 
         let mut ctl = self.send_and_wait_command_ack(&mh.message).await;
         let mut num_retry = 0;
@@ -94,16 +95,22 @@ impl Communicator {
             num_retry += 1;
         }
         if ctl.is_err() {
-            mh.sender.send(CommunicateStatus::Timeout);
+            mh.sender.send(CommunicateStatus::Timeout).unwrap();
             return; // このメッセージは終了
         }
-        mh.sender.send(CommunicateStatus::NoError(ctl.unwrap()));
+        mh.sender.send(CommunicateStatus::NoError(ctl.unwrap())).unwrap();
     }
 
     async fn send_and_wait_command_ack(&mut self, message: &Message) -> Result<Message, Control> {
-        self.connector.write_packet(&Packet::from_message(message)).await;
+        self.connector
+            .write_packet(&Packet::from_message(message))
+            .await;
 
-        match self.connector.read_packet_with_timeout(Duration::from_millis(500)).await {
+        match self
+            .connector
+            .read_packet_with_timeout(Duration::from_millis(500))
+            .await
+        {
             Some(packet) => {
                 let mes = packet.to_message();
                 if mes.id != message.id {
@@ -111,7 +118,7 @@ impl Communicator {
                 }
                 Ok(mes)
             }
-            None => Err(Control::Retry)
+            None => Err(Control::Retry),
         }
     }
 }

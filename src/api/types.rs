@@ -1,7 +1,6 @@
-use std::io::{Write, Read, Result};
 use crate::protocol::message::{ToParams, PARAMS_SIZE};
 use derives::ToParams;
-
+use std::io::Write;
 
 #[derive(Debug, Default, Copy, Clone, ToParams)]
 pub struct PTPCmd {

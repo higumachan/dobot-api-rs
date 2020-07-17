@@ -1,7 +1,6 @@
-
 use crate::protocol::packet::SYNC_BYTE;
 use crate::protocol::protocol_id::ProtocolID;
-use std::io::Read;
+
 use nom::lib::std::fmt::{Debug, Formatter};
 
 const MAX_PAYLOAD_SIZE: u8 = (SYNC_BYTE - 1);
@@ -10,7 +9,6 @@ pub const PARAMS_SIZE: usize = MAX_PAYLOAD_SIZE as usize - 2;
 pub trait ToParams {
     fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]);
 }
-
 
 #[repr(C, packed)]
 #[derive(Clone)]
@@ -33,7 +31,6 @@ impl Debug for Message {
     }
 }
 
-
 impl ToParams for () {
     fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]) {
         unimplemented!()
@@ -41,7 +38,12 @@ impl ToParams for () {
 }
 
 impl Message {
-    pub fn new<T: ToParams>(protocol_id: ProtocolID, rw: u8, is_queued: bool, params_value: &Option<T>) -> Self {
+    pub fn new<T: ToParams>(
+        protocol_id: ProtocolID,
+        rw: u8,
+        is_queued: bool,
+        params_value: &Option<T>,
+    ) -> Self {
         let (size, params) = if let Some(p) = params_value {
             p.to_params()
         } else {

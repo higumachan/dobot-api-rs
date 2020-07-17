@@ -1,7 +1,7 @@
-mod protocol;
 pub mod api;
-mod connector;
 mod communicator;
+mod connector;
+mod protocol;
 
 #[cfg(test)]
 mod tests {
