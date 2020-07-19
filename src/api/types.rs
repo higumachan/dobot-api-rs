@@ -17,3 +17,17 @@ pub struct EndEffectorParams {
     y_bias: f32,
     z_bias: f32,
 }
+
+#[derive(Debug, Copy, Clone, ToParams)]
+pub struct EndEffectorSuctionCapParams {
+    enable_ctrl: bool,
+    suck: bool,
+}
+
+#[derive(Debug, Default, Copy, Clone, ToParams)]
+pub struct PTPCommonParams {
+    velocity_ratio: f32,
+    acceleration_ratio: f32,
+}
+
+

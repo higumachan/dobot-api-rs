@@ -159,6 +159,8 @@ impl Dobot {
         self.send_command_message(&mes).await
     }
 
+    pub async fn set_PTP_common_params();
+
     pub async fn set_ptp_cmd(&self, ptp_cmd: PTPCmd, is_queued: bool) -> ResultQueueIndex {
         let mes = Message::new(ProtocolID::ProtocolPTPCmd, 1, is_queued, &Some(ptp_cmd));
         self.send_command_message(&mes).await
@@ -173,6 +175,9 @@ impl Dobot {
             CommunicateStatus::NoError(_) => Ok(()),
             _ => Err(DobotError::CommunicationError(status)),
         }
+    }
+
+    pub async fn set_end_effector_suctions_cap(enable_ctrl: bool, suck: bool, is_queued: bool) -> ResultQueueIndex {
     }
 
     async fn send_command_message(&self, message: &Message) -> ResultQueueIndex {

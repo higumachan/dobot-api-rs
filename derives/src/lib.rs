@@ -1,8 +1,11 @@
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
+use proc_macro::{TokenStream};
 use quote::quote;
 use syn;
+use syn::spanned::Spanned;
+use std::any::Any;
+
 
 
 #[proc_macro_derive(ToParams)]
@@ -28,10 +31,13 @@ fn impl_to_params(ast: &syn::DeriveInput) -> TokenStream {
     let field_ident = fields.map(|f| {
         let ident = f.ident.as_ref().unwrap();
 
-
-        quote! {
-            size += buf.write(&self.#ident.to_le_bytes()).unwrap();
+        match f.ty {
+            syn::Type::Verbatim(t) => t.into_iter().fold_first()
         }
+
+        let t = quote! {
+            size += buf.write(&self.#ident.to_le_bytes()).unwrap();
+        };
     });
 
     let gen = quote! {
