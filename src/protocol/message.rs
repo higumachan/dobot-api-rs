@@ -7,7 +7,7 @@ const MAX_PAYLOAD_SIZE: u8 = (SYNC_BYTE - 1);
 pub const PARAMS_SIZE: usize = MAX_PAYLOAD_SIZE as usize - 2;
 
 pub trait ToParams {
-    fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]);
+    fn to_params(&self) -> std::io::Result<(usize, [u8; PARAMS_SIZE])>;
 }
 
 #[repr(C, packed)]
@@ -32,7 +32,7 @@ impl Debug for Message {
 }
 
 impl ToParams for () {
-    fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]) {
+    fn to_params(&self) -> std::io::Result<(usize, [u8; PARAMS_SIZE])> {
         unimplemented!()
     }
 }
@@ -45,7 +45,7 @@ impl Message {
         params_value: &Option<T>,
     ) -> Self {
         let (size, params) = if let Some(p) = params_value {
-            p.to_params()
+            p.to_params().unwrap()
         } else {
             (0, [0; PARAMS_SIZE])
         };
