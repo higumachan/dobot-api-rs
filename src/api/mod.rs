@@ -1,4 +1,4 @@
-use crate::api::types::{EndEffectorParams, PTPCmd};
+use crate::api::types::{EndEffectorParams, EndEffectorSuctionCapParams, PTPCmd, PTPCommonParams};
 use crate::api::DobotError::CommunicationError;
 use crate::communicator::{CommunicateStatus, Communicator};
 use crate::connector::{Connector, ConnectorError};
@@ -159,7 +159,19 @@ impl Dobot {
         self.send_command_message(&mes).await
     }
 
-    pub async fn set_PTP_common_params();
+    pub async fn set_PTP_common_params(
+        &self,
+        params: PTPCommonParams,
+        is_queued: bool,
+    ) -> ResultQueueIndex {
+        let mes = Message::new(
+            ProtocolID::ProtocolPTPCommonParams,
+            1,
+            is_queued,
+            &Some(params),
+        );
+        self.send_command_message(&mes).await
+    }
 
     pub async fn set_ptp_cmd(&self, ptp_cmd: PTPCmd, is_queued: bool) -> ResultQueueIndex {
         let mes = Message::new(ProtocolID::ProtocolPTPCmd, 1, is_queued, &Some(ptp_cmd));
@@ -177,7 +189,19 @@ impl Dobot {
         }
     }
 
-    pub async fn set_end_effector_suctions_cap(enable_ctrl: bool, suck: bool, is_queued: bool) -> ResultQueueIndex {
+    pub async fn set_end_effector_suctions_cap(
+        &self,
+        enable_ctrl: bool,
+        suck: bool,
+        is_queued: bool,
+    ) -> ResultQueueIndex {
+        let mes = Message::new(
+            ProtocolID::ProtocolPTPCommonParams,
+            1,
+            is_queued,
+            &Some(EndEffectorSuctionCapParams { enable_ctrl, suck }),
+        );
+        self.send_command_message(&mes).await
     }
 
     async fn send_command_message(&self, message: &Message) -> ResultQueueIndex {

@@ -13,21 +13,19 @@ pub struct PTPCmd {
 
 #[derive(Debug, Default, Copy, Clone, ToParams)]
 pub struct EndEffectorParams {
-    x_bias: f32,
-    y_bias: f32,
-    z_bias: f32,
+    pub x_bias: f32,
+    pub y_bias: f32,
+    pub z_bias: f32,
 }
 
 #[derive(Debug, Copy, Clone, ToParams)]
 pub struct EndEffectorSuctionCapParams {
-    enable_ctrl: bool,
-    suck: bool,
+    pub enable_ctrl: bool,
+    pub suck: bool,
 }
 
 #[derive(Debug, Default, Copy, Clone, ToParams)]
 pub struct PTPCommonParams {
-    velocity_ratio: f32,
-    acceleration_ratio: f32,
+    pub velocity_ratio: f32,
+    pub acceleration_ratio: f32,
 }
-
-
