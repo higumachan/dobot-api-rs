@@ -43,12 +43,15 @@ impl Dobot {
     pub async fn start(&self, dobot_main_future: BoxFuture<'_, ()>) {
         let dm = dobot_main_future.fuse();
         let start = self.start_communicator_loop().fuse();
+        let cq = self.check_queue_index_loop().fuse();
 
-        pin_mut!(start, dm);
+        pin_mut!(start, dm, cq);
 
         loop {
             select! {
                 () = start => {
+                },
+                () = cq => {
                 },
                 () = dm => {
                     break;
@@ -70,6 +73,7 @@ impl Dobot {
                 .get_queue_index()
                 .await
                 .expect("some error when get_queue_index");
+
             let mut chi = self.checking_queue_indices.write().await;
             let mut i = 0;
 
@@ -96,7 +100,22 @@ impl Dobot {
     }
 
     pub async fn get_queue_index(&self) -> Result<QueueIndex> {
-        Ok(QueueIndex(1u64))
+        let mes = Message::new::<()>(
+            ProtocolID::ProtocolQueuedCmdCurrentIndex,
+            ReadWrite::Read,
+            false,
+            &None,
+        );
+
+        let status = self.send_command_message_and_wait_execution(&mes).await;
+
+        match status {
+            CommunicateStatus::NoError(message) => Ok(QueueIndex(u64::from_params(
+                message.params_len as usize,
+                message.params,
+            ))),
+            _ => Err(DobotError::CommunicationError(status)),
+        }
     }
 
     pub fn search_dobot() -> Vec<String> {

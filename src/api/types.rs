@@ -1,3 +1,4 @@
+use crate::protocol::message::ToParamable;
 use crate::protocol::message::{FromParams, ToParams, PARAMS_SIZE};
 use byteorder::{LittleEndian, ReadBytesExt};
 use derives::ToParams;
@@ -64,14 +65,14 @@ pub enum HHTTrigMode {
 }
 
 impl ToParams for HHTTrigMode {
-    fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]) {
-        (
+    fn to_params(&self) -> std::io::Result<(usize, [u8; PARAMS_SIZE])> {
+        Ok((
             1,
             [match self {
                 HHTTrigMode::TriggeredOnKeyReleased => 0u8,
                 HHTTrigMode::TriggeredOnPeriodicInterval => 1u8,
             }; PARAMS_SIZE],
-        )
+        ))
     }
 }
 

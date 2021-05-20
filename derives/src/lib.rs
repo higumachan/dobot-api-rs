@@ -29,7 +29,7 @@ fn impl_to_params(ast: &syn::DeriveInput) -> TokenStream {
 
         quote! {
             let mut buf = &mut b[size..];
-            size += self.#ident.to_params(buf);
+            size += ToParamable::to_params(&self.#ident, buf);
         }
     });
 
