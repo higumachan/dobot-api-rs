@@ -112,7 +112,10 @@ impl Communicator {
                 }
                 Ok(mes)
             }
-            None => panic!("timeout"),
+            None => {
+                eprintln!("timeout");
+                Err(Control::Retry)
+            }
         }
     }
 }

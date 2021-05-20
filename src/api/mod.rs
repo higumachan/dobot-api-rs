@@ -1,8 +1,10 @@
-use crate::api::types::{EndEffectorParams, EndEffectorSuctionCapParams, PTPCmd, PTPCommonParams};
+use crate::api::types::{
+    EndEffectorParams, EndEffectorSuctionCapParams, HHTTrigMode, PTPCmd, PTPCommonParams, Pose,
+};
 use crate::api::DobotError::CommunicationError;
 use crate::communicator::{CommunicateStatus, Communicator};
 use crate::connector::{Connector, ConnectorError};
-use crate::protocol::message::Message;
+use crate::protocol::message::{FromParams, Message, ReadWrite};
 use crate::protocol::protocol_id::ProtocolID;
 use futures::channel::oneshot;
 use futures::future::join_all;
@@ -151,7 +153,7 @@ impl Dobot {
     ) -> ResultQueueIndex {
         let mes = Message::new(
             ProtocolID::ProtocolEndEffectorParams,
-            1,
+            ReadWrite::Write,
             is_queued,
             &Some(end_effector_params),
         );
@@ -166,7 +168,7 @@ impl Dobot {
     ) -> ResultQueueIndex {
         let mes = Message::new(
             ProtocolID::ProtocolPTPCommonParams,
-            1,
+            ReadWrite::Write,
             is_queued,
             &Some(params),
         );
@@ -174,12 +176,22 @@ impl Dobot {
     }
 
     pub async fn set_ptp_cmd(&self, ptp_cmd: PTPCmd, is_queued: bool) -> ResultQueueIndex {
-        let mes = Message::new(ProtocolID::ProtocolPTPCmd, 1, is_queued, &Some(ptp_cmd));
+        let mes = Message::new(
+            ProtocolID::ProtocolPTPCmd,
+            ReadWrite::Write,
+            is_queued,
+            &Some(ptp_cmd),
+        );
         self.send_command_message(&mes).await
     }
 
     pub async fn set_queued_cmd_start_exec(&self) -> Result<()> {
-        let mes = Message::new::<()>(ProtocolID::ProtocolQueuedCmdStartExec, 1, false, &None);
+        let mes = Message::new::<()>(
+            ProtocolID::ProtocolQueuedCmdStartExec,
+            ReadWrite::Write,
+            false,
+            &None,
+        );
 
         let status_recv = { self.communicator.write().await.insert_message(&mes) };
         let status = status_recv.await.unwrap();
@@ -196,12 +208,59 @@ impl Dobot {
         is_queued: bool,
     ) -> ResultQueueIndex {
         let mes = Message::new(
-            ProtocolID::ProtocolPTPCommonParams,
-            1,
+            ProtocolID::ProtocolEndEffectorSuctionCup,
+            ReadWrite::Write,
             is_queued,
             &Some(EndEffectorSuctionCapParams { enable_ctrl, suck }),
         );
+        dbg!(&mes);
         self.send_command_message(&mes).await
+    }
+
+    pub async fn set_hht_trig_mode(&self, mode: HHTTrigMode) -> Result<()> {
+        let mes = Message::new(
+            ProtocolID::ProtocolHHTTrigMode,
+            ReadWrite::Write,
+            false,
+            &Some(mode),
+        );
+
+        let status = self.send_command_message_and_wait_execution(&mes).await;
+
+        match status {
+            CommunicateStatus::NoError(_) => Ok(()),
+            _ => Err(DobotError::CommunicationError(status)),
+        }
+    }
+
+    pub async fn set_hht_trig_output_enabled(&self, is_enabled: bool) -> Result<()> {
+        let mes = Message::new(
+            ProtocolID::ProtocolHHTTrigOutputEnabled,
+            ReadWrite::Write,
+            false,
+            &Some(is_enabled),
+        );
+
+        let status = self.send_command_message_and_wait_execution(&mes).await;
+
+        match status {
+            CommunicateStatus::NoError(_) => Ok(()),
+            _ => Err(DobotError::CommunicationError(status)),
+        }
+    }
+
+    pub async fn get_pose(&self) -> Result<Pose> {
+        let mes = Message::new::<()>(ProtocolID::ProtocolGetPose, ReadWrite::Read, false, &None);
+
+        let status = self.send_command_message_and_wait_execution(&mes).await;
+
+        match status {
+            CommunicateStatus::NoError(message) => Ok(Pose::from_params(
+                message.params_len as usize,
+                message.params,
+            )),
+            _ => Err(DobotError::CommunicationError(status)),
+        }
     }
 
     async fn send_command_message(&self, message: &Message) -> ResultQueueIndex {
@@ -216,5 +275,13 @@ impl Dobot {
         } else {
             Err(CommunicationError(status))
         }
+    }
+
+    async fn send_command_message_and_wait_execution(
+        &self,
+        message: &Message,
+    ) -> CommunicateStatus {
+        let status_recv = { self.communicator.write().await.insert_message(message) };
+        status_recv.await.unwrap()
     }
 }

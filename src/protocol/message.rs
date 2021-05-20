@@ -10,6 +10,23 @@ pub trait ToParams {
     fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]);
 }
 
+impl ToParams for bool {
+    fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]) {
+        (
+            1,
+            if *self {
+                [1u8; PARAMS_SIZE]
+            } else {
+                [0u8; PARAMS_SIZE]
+            },
+        )
+    }
+}
+
+pub trait FromParams {
+    fn from_params(size: usize, params: [u8; PARAMS_SIZE]) -> Self;
+}
+
 #[repr(C, packed)]
 #[derive(Clone)]
 pub struct Message {
@@ -18,6 +35,21 @@ pub struct Message {
     pub is_queued: u8,
     pub params_len: u8,
     pub params: [u8; PARAMS_SIZE],
+}
+
+#[derive(Clone, Copy)]
+pub enum ReadWrite {
+    Read = 0,
+    Write = 1,
+}
+
+impl Into<u8> for ReadWrite {
+    fn into(self) -> u8 {
+        match self {
+            Self::Read => 0,
+            Self::Write => 1,
+        }
+    }
 }
 
 impl Debug for Message {
@@ -33,14 +65,14 @@ impl Debug for Message {
 
 impl ToParams for () {
     fn to_params(&self) -> (usize, [u8; PARAMS_SIZE]) {
-        unimplemented!()
+        unreachable!()
     }
 }
 
 impl Message {
     pub fn new<T: ToParams>(
         protocol_id: ProtocolID,
-        rw: u8,
+        rw: ReadWrite,
         is_queued: bool,
         params_value: &Option<T>,
     ) -> Self {
@@ -52,7 +84,7 @@ impl Message {
 
         Self {
             id: protocol_id as u8,
-            rw,
+            rw: rw.into(),
             is_queued: if is_queued { 1u8 } else { 0u8 },
             params_len: size as u8,
             params,
