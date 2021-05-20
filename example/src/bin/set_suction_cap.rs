@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 
-use dobot_api::api::types::{HHTTrigMode, PTPCmd, PTPCommonParams};
+use dobot_api::api::types::{EndEffectorSuctionCapState, HHTTrigMode, PTPCmd, PTPCommonParams};
 use dobot_api::api::Dobot;
 use futures::future::BoxFuture;
 use futures::future::FutureExt;
@@ -17,12 +17,12 @@ async fn main() {
             async {
                 dobot.set_queued_cmd_start_exec().await.unwrap();
                 dobot
-                    .set_end_effector_suctions_cap(true, true, true)
+                    .set_end_effector_suctions_cap(EndEffectorSuctionCapState::In, true)
                     .await
                     .unwrap();
                 delay_for(Duration::from_secs(5)).await;
                 dobot
-                    .set_end_effector_suctions_cap(false, true, true)
+                    .set_end_effector_suctions_cap(EndEffectorSuctionCapState::Off, true)
                     .await
                     .unwrap();
             }

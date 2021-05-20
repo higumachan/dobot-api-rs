@@ -19,6 +19,32 @@ pub struct EndEffectorParams {
     pub z_bias: f32,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum EndEffectorSuctionCapState {
+    Off,
+    In,
+    Out,
+}
+
+impl Into<EndEffectorSuctionCapParams> for EndEffectorSuctionCapState {
+    fn into(self) -> EndEffectorSuctionCapParams {
+        match self {
+            Self::Off => EndEffectorSuctionCapParams {
+                enable_ctrl: false,
+                suck: false,
+            },
+            Self::In => EndEffectorSuctionCapParams {
+                enable_ctrl: true,
+                suck: true,
+            },
+            Self::Out => EndEffectorSuctionCapParams {
+                enable_ctrl: true,
+                suck: false,
+            },
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, ToParams)]
 pub struct EndEffectorSuctionCapParams {
     pub enable_ctrl: bool,

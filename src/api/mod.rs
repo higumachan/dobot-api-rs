@@ -1,5 +1,6 @@
 use crate::api::types::{
-    EndEffectorParams, EndEffectorSuctionCapParams, HHTTrigMode, PTPCmd, PTPCommonParams, Pose,
+    EndEffectorParams, EndEffectorSuctionCapParams, EndEffectorSuctionCapState, HHTTrigMode,
+    PTPCmd, PTPCommonParams, Pose,
 };
 use crate::api::DobotError::CommunicationError;
 use crate::communicator::{CommunicateStatus, Communicator};
@@ -203,17 +204,15 @@ impl Dobot {
 
     pub async fn set_end_effector_suctions_cap(
         &self,
-        enable_ctrl: bool,
-        suck: bool,
+        suctions_cap_state: EndEffectorSuctionCapState,
         is_queued: bool,
     ) -> ResultQueueIndex {
-        let mes = Message::new(
+        let mes = Message::new::<EndEffectorSuctionCapParams>(
             ProtocolID::ProtocolEndEffectorSuctionCup,
             ReadWrite::Write,
             is_queued,
-            &Some(EndEffectorSuctionCapParams { enable_ctrl, suck }),
+            &Some(suctions_cap_state.into()),
         );
-        dbg!(&mes);
         self.send_command_message(&mes).await
     }
 
